@@ -10,19 +10,43 @@
 #include <pthread.h>
 
 int n_clinet = 0;
-int sock_udp;
 struct sockaddr_in from_adrs;
-#define NAMELENGTH 15
 
 char Buffer[S_BUFSIZE];
 
 static char *chop_nl(char *s);
 
-typedef struct Client_Info{
-	int  sock;
-	char name[NAMELENGTH];
-	struct Client_Info *next;
-} *client_info;
+client_info *add_client(int _sock,char _name[],client_info *ci){
+	client_info *new = malloc(sizeof(client_info));
+	if(new != NULL){
+		new->sock = _sock;
+		strcpy(new->name ,_name);
+		new->next = ci;
+	}
+	return new;
+}
+
+client_list *make_list(void){
+  client_list *ls = malloc(sizeof(client_list));
+  if (ls != NULL) {
+    ls->top = add_client(0,NULL,NULL);
+    if (ls->top == NULL) {
+      free(ls);
+      return NULL;
+    }
+  }
+  return ls;
+}
+
+void insert_info(client_list *ls,int sock,char name[]){
+	client_info *ci = ls->top;
+	while(ci->next != NULL)ci = ci->next;
+	ci->next = add_client(sock,name,NULL);
+}
+
+int delete_info(){
+
+}
 
 void udp_monitor(int _sock_udp){
 	socklen_t from_len;
@@ -30,18 +54,17 @@ void udp_monitor(int _sock_udp){
 	int strsize;
 	fd_set mask, readfds;
 
-	sock_udp = _sock_udp;//todo
 	FD_ZERO(&mask);
-	FD_SET(sock_udp, &mask);
+	FD_SET(_sock_udp, &mask);
 	readfds = mask;
-	select( sock_udp+1, &readfds, NULL, NULL, NULL );
+	select( _sock_udp+1, &readfds, NULL, NULL, NULL );
 	/*recv data*/
-	if(FD_ISSET(sock_udp,&readfds)){
+	if(FD_ISSET(_sock_udp,&readfds)){
 		from_len = sizeof(from_adrs);
-		strsize = Recvfrom(sock_udp, r_buf, R_BUFSIZE-1, 0,
+		strsize = Recvfrom(_sock_udp, r_buf, R_BUFSIZE-1, 0,
 				(struct sockaddr *)&from_adrs, &from_len);
 		r_buf[strsize] = '\0';
-		msg_processor(r_buf);
+		msg_processor(r_buf,_sock_udp);
 	}
 }
 
@@ -93,7 +116,7 @@ void * echo_thread(void *arg){
 					break;
 				}
 				r_buf[strsize] = '\0';
-				msg_processor(r_buf);
+				msg_processor(r_buf,sock_accepted);
 				printf("[RECV:%p]%s",(void *)pthread_self(),r_buf);
 			}
 		}
@@ -116,8 +139,8 @@ void create_packet(int type,char *message){
 	case POST:
 		snprintf(Buffer,S_BUFSIZE,"POST %s",message);
 		break;
-	case MESSAGE:
-		snprintf(Buffer,S_BUFSIZE,"MESSAGE %s",message);
+	case MESG:
+		snprintf(Buffer,S_BUFSIZE,"MESG %s",message);
 		break;
 	case QUIT:
 		snprintf(Buffer,S_BUFSIZE,"QUIT");
@@ -130,32 +153,30 @@ int analyze_packet(char *_header){
 	if( strncmp( _header, "HERE", 4 )==0 ) return(HERE);
 	if( strncmp( _header, "JOIN", 4 )==0 ) return(JOIN);
 	if( strncmp( _header, "POST", 4 )==0 ) return(POST);
-	if( strncmp( _header, "MESG", 4 )==0 ) return(MESSAGE);
+	if( strncmp( _header, "MESG", 4 )==0 ) return(MESG);
 	if( strncmp( _header, "QUIT", 4 )==0 ) return(QUIT);
 	return 0;
 }
 
-void msg_processor(char *_r_buf){
-	printf("[DEBUG]%s\n",_r_buf);
+void msg_processor(char *_r_buf,int _sock){
 	packet *recv_data = (packet *)_r_buf;
 	switch(analyze_packet(recv_data->header)){
 	case HELO:
 		create_packet(HERE,"");
-		Sendto(sock_udp,Buffer,strlen(Buffer),0,
+		Sendto(_sock,Buffer,strlen(Buffer),0,
 				(struct sockaddr *)&from_adrs, sizeof(from_adrs));
 		printf("[INFO]Appear New Client.\n");
 		n_clinet++;
 		break;
 	case JOIN:
 		chop_nl(recv_data->msg);
-
-
-
+//		insert_info(ls,_sock,recv_data->msg);todo
 		break;
 	case POST:
-
+		create_packet(MESG,recv_data->msg);
+		send_message(_sock,Buffer,strlen(Buffer),0);
 		break;
-	case MESSAGE:
+	case MESG:
 
 		break;
 	case QUIT:

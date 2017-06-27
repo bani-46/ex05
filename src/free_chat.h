@@ -15,6 +15,7 @@
 
 #define S_BUFSIZE 512
 #define R_BUFSIZE 512
+#define NAMELENGTH 15
 
 /*Header*/
 enum{
@@ -22,7 +23,7 @@ enum{
 	HERE,
 	JOIN,
 	POST,
-	MESSAGE,
+	MESG,
 	QUIT
 };
 
@@ -31,6 +32,17 @@ typedef struct{
 	char separator;
 	char msg[];
 }packet;
+
+typedef struct Client_Info{
+	int  sock;
+	char name[NAMELENGTH];
+	struct Client_Info *next;
+}client_info;
+
+typedef struct{
+	client_info *top;
+}client_list;
+
 
 void free_chat_server(int _port_number);
 void free_chat_client(int _port_number,char username[],
@@ -46,6 +58,10 @@ int recv_message(int s, void *buf, size_t len, int flags);
 
 void create_packet(int type,char *message);
 int analyze_packet(char *_header);
-void msg_processor(char *_r_buf);
+void msg_processor(char *_r_buf,int _sock);
+
+client_info *add_client(int _sock,char _name[],client_info *ci);
+client_list *make_list(void);
+
 
 #endif /* FREE_CHAT_H_ */
