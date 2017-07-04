@@ -12,8 +12,6 @@
 int n_clinet = 0;
 struct sockaddr_in from_adrs;
 
-char Buffer[S_BUFSIZE];
-
 static char *chop_nl(char *s);
 
 client_info *add_client(int _sock,char _name[],client_info *ci){
@@ -26,13 +24,18 @@ client_info *add_client(int _sock,char _name[],client_info *ci){
 	return new;
 }
 
-client_list *make_list(void){
-  client_list *ls = malloc(sizeof(client_list));
+client_list *make_list(){
+  client_list *ls;
+
+  ls = malloc(sizeof(client_list));
   if (ls != NULL) {
-    ls->top = add_client(0,NULL,NULL);
+    ls->top = add_client(0,"",NULL);
     if (ls->top == NULL) {
       free(ls);
       return NULL;
+    }
+    else{
+    	  printf("[INFO]Success set up list.\n");
     }
   }
   return ls;
@@ -50,7 +53,7 @@ int delete_info(){
 
 void udp_monitor(int _sock_udp){
 	socklen_t from_len;
-	char r_buf[R_BUFSIZE];
+	char r_buf[BUFSIZE];
 	int strsize;
 	fd_set mask, readfds;
 
@@ -61,8 +64,7 @@ void udp_monitor(int _sock_udp){
 	/*recv data*/
 	if(FD_ISSET(_sock_udp,&readfds)){
 		from_len = sizeof(from_adrs);
-		strsize = Recvfrom(_sock_udp, r_buf, R_BUFSIZE-1, 0,
-				(struct sockaddr *)&from_adrs, &from_len);
+		strsize = Recvfrom(_sock_udp, r_buf, BUFSIZE-1, 0,(struct sockaddr *)&from_adrs, &from_len);
 		r_buf[strsize] = '\0';
 		msg_processor(r_buf,_sock_udp);
 	}
@@ -77,7 +79,7 @@ void tcp_monitor(int _sock_listen){
 	printf("[INFO]tcp success connect\n");
 
 	sock_accepted = accept(_sock_listen, NULL, NULL);
-	/* スレッド関数の引数を用意する */
+	/* set up arg for create thread */
 	if( (tharg = (int *)malloc(sizeof(int)))==NULL ){
 		exit_errmesg("malloc()");
 	}
@@ -90,7 +92,7 @@ void tcp_monitor(int _sock_listen){
 void * echo_thread(void *arg){
 	int sock_accepted;
 	int strsize;
-	char r_buf[R_BUFSIZE];
+	char r_buf[BUFSIZE];
 	fd_set mask, readfds;
 
 	sock_accepted = *((int *)arg);
@@ -109,7 +111,7 @@ void * echo_thread(void *arg){
 
 			/* recv message */
 			if( FD_ISSET(sock_accepted, &readfds) ){
-				strsize = recv_message(sock_accepted, r_buf, R_BUFSIZE-1, 0);
+				strsize = recv_message(sock_accepted, r_buf, BUFSIZE-1, 0);
 				if(strsize == 0){
 					printf("[THEARD:%p]close\n",(void *)pthread_self());
 					close(sock_accepted);
@@ -125,27 +127,30 @@ void * echo_thread(void *arg){
 	return(NULL);
 }
 
-void create_packet(int type,char *message){
+char *create_packet(int type,char *message){
+	static char buf[BUFSIZE];
 	switch(type){
 	case HELO:
-		snprintf(Buffer,S_BUFSIZE,"HELO");
+		snprintf(buf,BUFSIZE,"HELO");
 		break;
 	case HERE:
-		snprintf(Buffer,S_BUFSIZE,"HERE");
+		snprintf(buf,BUFSIZE,"HERE");
 		break;
 	case JOIN:
-		snprintf(Buffer,S_BUFSIZE,"JOIN %s",message);
+		snprintf(buf,BUFSIZE,"JOIN %s",message);
+		printf("%s",buf);
 		break;
 	case POST:
-		snprintf(Buffer,S_BUFSIZE,"POST %s",message);
+		snprintf(buf,BUFSIZE,"POST %s",message);
 		break;
 	case MESG:
-		snprintf(Buffer,S_BUFSIZE,"MESG %s",message);
+		snprintf(buf,BUFSIZE,"MESG %s",message);
 		break;
 	case QUIT:
-		snprintf(Buffer,S_BUFSIZE,"QUIT");
+		snprintf(buf,BUFSIZE,"QUIT");
 		break;
 	}
+	return buf;
 }
 
 int analyze_packet(char *_header){
@@ -160,21 +165,23 @@ int analyze_packet(char *_header){
 
 void msg_processor(char *_r_buf,int _sock){
 	packet *recv_data = (packet *)_r_buf;
+	char *buf;
+	buf = malloc(BUFSIZE);
 	switch(analyze_packet(recv_data->header)){
 	case HELO:
-		create_packet(HERE,"");
-		Sendto(_sock,Buffer,strlen(Buffer),0,
-				(struct sockaddr *)&from_adrs, sizeof(from_adrs));
+		buf = create_packet(HERE,"");
+		Sendto(_sock,buf,strlen(buf),0,(struct sockaddr *)&from_adrs, sizeof(from_adrs));
 		printf("[INFO]Appear New Client.\n");
 		n_clinet++;
 		break;
 	case JOIN:
 		chop_nl(recv_data->msg);
+		printf("[INFO]%s is login.\n",recv_data->msg);
 //		insert_info(ls,_sock,recv_data->msg);todo
 		break;
 	case POST:
-		create_packet(MESG,recv_data->msg);
-		send_message(_sock,Buffer,strlen(Buffer),0);
+//		create_packet(MESG,recv_data->msg);
+//		send_message(_sock,buf,strlen(buf),0);
 		break;
 	case MESG:
 
@@ -183,6 +190,7 @@ void msg_processor(char *_r_buf,int _sock){
 
 		break;
 	}
+//	free(buf);
 }
 
 static char *chop_nl(char *s){

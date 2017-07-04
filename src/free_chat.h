@@ -13,8 +13,8 @@
 #include <string.h>
 #include "mynet.h"
 
-#define S_BUFSIZE 512
-#define R_BUFSIZE 512
+#define BUFSIZE 512
+//#define R_BUFSIZE 512
 #define NAMELENGTH 15
 
 /*Header*/
@@ -56,7 +56,7 @@ int accept_client(int s, struct sockaddr *addr, socklen_t *addrlen);
 int send_message(int s, void *buf, size_t len, int flags);
 int recv_message(int s, void *buf, size_t len, int flags);
 
-void create_packet(int type,char *message);
+char *create_packet(int type,char *message);
 int analyze_packet(char *_header);
 void msg_processor(char *_r_buf,int _sock);
 

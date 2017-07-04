@@ -67,7 +67,8 @@ char branch_mode(int _port_number){
 	struct timeval timeout;
 	int timeout_count = 0;
 
-	char r_buf[R_BUFSIZE];
+	char *s_buf;
+	char r_buf[BUFSIZE];
 	int strsize;
 
     /*set socket to use broadcast*/
@@ -87,8 +88,8 @@ char branch_mode(int _port_number){
 		timeout.tv_sec = TIMEOUT_SEC;
 		timeout.tv_usec = 0;
 		/*[HELO] broadcasting*/
-		Sendto(sock_broadcast, "HELO", strlen("HELO"), 0,
-					(struct sockaddr *)&broadcast_adrs, sizeof(broadcast_adrs) );
+		s_buf = create_packet(HELO,"");
+		Sendto(sock_broadcast, s_buf, strlen(s_buf), 0,(struct sockaddr *)&broadcast_adrs, sizeof(broadcast_adrs) );
 		/*no recv_data*/
 		if( select( sock_broadcast+1, &readfds, NULL, NULL, &timeout )==0 ){
 			timeout_count++;
@@ -99,8 +100,7 @@ char branch_mode(int _port_number){
 		/*some message recv*/
 		else{
 			from_len = sizeof(from_adrs);
-			strsize = Recvfrom(sock_broadcast, r_buf, R_BUFSIZE-1, 0,
-					(struct sockaddr *)&from_adrs, &from_len);
+			strsize = Recvfrom(sock_broadcast, r_buf, BUFSIZE-1, 0,(struct sockaddr *)&from_adrs, &from_len);
 			r_buf[strsize] = '\0';
 			printf("[DEBUG]recv:%s\n",r_buf);
 			/*set Client mode*/
