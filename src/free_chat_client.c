@@ -9,7 +9,9 @@
 void free_chat_client(int _port_number,char username[],struct sockaddr_in *from_adrs){
 	int sock,strsize;
 	fd_set mask, readfds;
-	char ip_adrs[20],s_buf[BUFSIZE],r_buf[BUFSIZE];
+	char ip_adrs[20];
+	char *s_buf,r_buf[BUFSIZE];
+//	char *p;
 
 	strncpy(ip_adrs,inet_ntoa(from_adrs->sin_addr),20);
 	sock= init_tcpclient(ip_adrs,_port_number);
@@ -17,9 +19,7 @@ void free_chat_client(int _port_number,char username[],struct sockaddr_in *from_
 	printf("[INFO]Connect server.\n");
 
 	/*login process*/
-	*s_buf = create_packet(JOIN,username);
-	printf("[DEBUG]%s",s_buf);
-	fflush(stdout);
+	s_buf = create_packet(JOIN,username);
 	strsize = strlen(s_buf);
 	send_message(sock, s_buf, strsize, 0);
 
@@ -44,7 +44,7 @@ void free_chat_client(int _port_number,char username[],struct sockaddr_in *from_
 			/* recv message */
 			strsize = recv_message(sock, r_buf, BUFSIZE-1, 0);
 			r_buf[strsize] = '\0';
-			printf("%s",r_buf);
+			msg_processor(r_buf,sock);
 			fflush(stdout);
 		}
 

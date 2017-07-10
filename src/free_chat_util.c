@@ -11,20 +11,24 @@
 
 int n_clinet = 0;
 struct sockaddr_in from_adrs;
+client_list *head;
 
 static char *chop_nl(char *s);
 
+//make_listの返り値を常に保持(head)
+//headをコピー、走査
 client_info *add_client(int _sock,char _name[],client_info *ci){
 	client_info *new = malloc(sizeof(client_info));
 	if(new != NULL){
 		new->sock = _sock;
 		strcpy(new->name ,_name);
 		new->next = ci;
+//		printf("[INFO]%d,%s\n",new->sock,new->name);
 	}
 	return new;
 }
 
-client_list *make_list(){
+void make_list(){
   client_list *ls;
 
   ls = malloc(sizeof(client_list));
@@ -32,23 +36,32 @@ client_list *make_list(){
     ls->top = add_client(0,"",NULL);
     if (ls->top == NULL) {
       free(ls);
-      return NULL;
     }
-    else{
-    	  printf("[INFO]Success set up list.\n");
-    }
+    else printf("[INFO]Success set up list.\n");
   }
-  return ls;
+  head = ls;
+  printf("[DEBUG]head: %d %s %p",head->top->sock,head->top->name,head->top->next);
 }
 
-void insert_info(client_list *ls,int sock,char name[]){
-	client_info *ci = ls->top;
+void insert_info(client_list *head,int sock,char name[]){
+	client_info *ci = head->top;
 	while(ci->next != NULL)ci = ci->next;
 	ci->next = add_client(sock,name,NULL);
+	printf("[INSERT]%d,%s\n",ci->next->sock,ci->next->name);
 }
 
 int delete_info(){
+	return 0;
+}
 
+void show_list(){
+	client_info *ci = head->top->next;
+	printf("[DEBUG]head:%d:%s:%p\n",ci->sock,ci->name,ci->next);
+	while(ci!= NULL){
+		printf("[LIST]%d,%s\n",ci->sock,ci->name);
+		ci = ci->next;
+	}
+	printf("[INFO]END of List.\n");
 }
 
 void udp_monitor(int _sock_udp){
@@ -65,8 +78,8 @@ void udp_monitor(int _sock_udp){
 	if(FD_ISSET(_sock_udp,&readfds)){
 		from_len = sizeof(from_adrs);
 		strsize = Recvfrom(_sock_udp, r_buf, BUFSIZE-1, 0,(struct sockaddr *)&from_adrs, &from_len);
-		r_buf[strsize] = '\0';
 		msg_processor(r_buf,_sock_udp);
+		r_buf[strsize] = '\0';
 	}
 }
 
@@ -138,7 +151,6 @@ char *create_packet(int type,char *message){
 		break;
 	case JOIN:
 		snprintf(buf,BUFSIZE,"JOIN %s",message);
-		printf("%s",buf);
 		break;
 	case POST:
 		snprintf(buf,BUFSIZE,"POST %s",message);
@@ -150,6 +162,7 @@ char *create_packet(int type,char *message){
 		snprintf(buf,BUFSIZE,"QUIT");
 		break;
 	}
+	printf("[Packet]%s",buf);
 	return buf;
 }
 
@@ -176,15 +189,19 @@ void msg_processor(char *_r_buf,int _sock){
 		break;
 	case JOIN:
 		chop_nl(recv_data->msg);
-		printf("[INFO]%s is login.\n",recv_data->msg);
-//		insert_info(ls,_sock,recv_data->msg);todo
+		printf("[INFO]No:%d,Name:%s is login.\n",_sock,recv_data->msg);
+		insert_info(head,_sock,recv_data->msg);
+		show_list();
 		break;
 	case POST:
-//		create_packet(MESG,recv_data->msg);
-//		send_message(_sock,buf,strlen(buf),0);
+		create_packet(MESG,recv_data->msg);
+		//ソケットからnameを得る
+		//msgに付与
+		//得られたname以外にsend
+		send_message(_sock,buf,strlen(buf),0);
 		break;
 	case MESG:
-
+		printf("[MESG]%s.\n",recv_data->msg);
 		break;
 	case QUIT:
 

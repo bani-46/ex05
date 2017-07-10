@@ -13,7 +13,7 @@ void free_chat_server(int _port_number){
 	sock_udp = init_udpserver(_port_number);
 	sock_listen = init_tcpserver(_port_number,5);
 	printf("[INFO]Monitoring start.\n");
-	client_list *cl = make_list();
+	make_list();
 	while(1){
 		udp_monitor(sock_udp);
 		tcp_monitor(sock_listen);

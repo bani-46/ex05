@@ -102,7 +102,6 @@ char branch_mode(int _port_number){
 			from_len = sizeof(from_adrs);
 			strsize = Recvfrom(sock_broadcast, r_buf, BUFSIZE-1, 0,(struct sockaddr *)&from_adrs, &from_len);
 			r_buf[strsize] = '\0';
-			printf("[DEBUG]recv:%s\n",r_buf);
 			/*set Client mode*/
 			if(strcmp("HERE",r_buf) == 0){
 				show_adrsinfo(&from_adrs);

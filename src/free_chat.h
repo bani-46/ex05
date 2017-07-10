@@ -61,7 +61,7 @@ int analyze_packet(char *_header);
 void msg_processor(char *_r_buf,int _sock);
 
 client_info *add_client(int _sock,char _name[],client_info *ci);
-client_list *make_list(void);
+void make_list(void);
 
 
 #endif /* FREE_CHAT_H_ */
