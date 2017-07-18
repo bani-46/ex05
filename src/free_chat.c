@@ -45,11 +45,11 @@ int main(int argc, char *argv[])
 	mode = branch_mode(port_number);
 	switch(mode){
 	case 'S':
-		printf("[INFO]Set Server mode.\n");
-		free_chat_server(port_number);
+		printf("\n***Set Server mode.\n");
+		free_chat_server(port_number,username);
 		break;
 	case 'C':
-		printf("[INFO]Set Client mode.\n");
+		printf("\n***Set Client mode.\n");
 		free_chat_client(port_number,username,&from_adrs);
 		break;
 	}
@@ -82,7 +82,7 @@ char branch_mode(int _port_number){
 	FD_ZERO(&mask);
 	FD_SET(sock_broadcast, &mask);
 
-	printf("[INFO]Packet sending...\n");
+	printf("***Packet sending...\n");
 	while(1){
 		readfds = mask;
 		timeout.tv_sec = TIMEOUT_SEC;
@@ -93,7 +93,7 @@ char branch_mode(int _port_number){
 		/*no recv_data*/
 		if( select( sock_broadcast+1, &readfds, NULL, NULL, &timeout )==0 ){
 			timeout_count++;
-			printf("[INFO]Time out %d.\n",timeout_count);
+			printf("***Time out %d.\n",timeout_count);
 			/*set Server mode*/
 			if(timeout_count == 3)break;
 		}

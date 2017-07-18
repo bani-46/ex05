@@ -13,9 +13,8 @@
 #include <string.h>
 #include "mynet.h"
 
-#define BUFSIZE 512
-//#define R_BUFSIZE 512
-#define NAMELENGTH 15
+#define BUFSIZE 488
+#define NAMELENGTH 12
 
 /*Header*/
 enum{
@@ -27,6 +26,7 @@ enum{
 	QUIT
 };
 
+/*Structures*/
 typedef struct{
 	char header[4];
 	char separator;
@@ -42,26 +42,36 @@ typedef struct Client_Info{
 typedef struct{
 	client_info *top;
 }client_list;
+client_list *head;
 
-
-void free_chat_server(int _port_number);
+/*main func*/
+void free_chat_server(int _port_number,char username[]);
 void free_chat_client(int _port_number,char username[],
 							struct sockaddr_in *from_adrs);
-
-void udp_monitor(int _sock_udp_listen);
+/*server func*/
+void udp_monitor(int _sock_udp_listen,char _username[]);
 void tcp_monitor(int _sock_listen);
 void * echo_thread(void *arg);
 
+/*wrapper func*/
 int accept_client(int s, struct sockaddr *addr, socklen_t *addrlen);
 int send_message(int s, void *buf, size_t len, int flags);
 int recv_message(int s, void *buf, size_t len, int flags);
 
+/*msg managers*/
 char *create_packet(int type,char *message);
 int analyze_packet(char *_header);
 void msg_processor(char *_r_buf,int _sock);
+char * get_cname(int _sock);
+void send_each(char *_buf,int _sock);
+char * format_MESG(char *name,char *msg);
 
+/*list func*/
 client_info *add_client(int _sock,char _name[],client_info *ci);
 void make_list(void);
-
+void insert_info(client_list *head,int sock,char name[]);
+void delete_info(int _sock);
+void show_list();
+int is_rest_info(int _sock);
 
 #endif /* FREE_CHAT_H_ */

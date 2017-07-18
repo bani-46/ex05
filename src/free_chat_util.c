@@ -9,71 +9,28 @@
 #include <sys/wait.h>
 #include <pthread.h>
 
-int n_clinet = 0;
 struct sockaddr_in from_adrs;
-client_list *head;
 
 static char *chop_nl(char *s);
 
-//make_listの返り値を常に保持(head)
-//headをコピー、走査
-client_info *add_client(int _sock,char _name[],client_info *ci){
-	client_info *new = malloc(sizeof(client_info));
-	if(new != NULL){
-		new->sock = _sock;
-		strcpy(new->name ,_name);
-		new->next = ci;
-//		printf("[INFO]%d,%s\n",new->sock,new->name);
-	}
-	return new;
-}
-
-void make_list(){
-  client_list *ls;
-
-  ls = malloc(sizeof(client_list));
-  if (ls != NULL) {
-    ls->top = add_client(0,"",NULL);
-    if (ls->top == NULL) {
-      free(ls);
-    }
-    else printf("[INFO]Success set up list.\n");
-  }
-  head = ls;
-  printf("[DEBUG]head: %d %s %p",head->top->sock,head->top->name,head->top->next);
-}
-
-void insert_info(client_list *head,int sock,char name[]){
-	client_info *ci = head->top;
-	while(ci->next != NULL)ci = ci->next;
-	ci->next = add_client(sock,name,NULL);
-	printf("[INSERT]%d,%s\n",ci->next->sock,ci->next->name);
-}
-
-int delete_info(){
-	return 0;
-}
-
-void show_list(){
-	client_info *ci = head->top->next;
-	printf("[DEBUG]head:%d:%s:%p\n",ci->sock,ci->name,ci->next);
-	while(ci!= NULL){
-		printf("[LIST]%d,%s\n",ci->sock,ci->name);
-		ci = ci->next;
-	}
-	printf("[INFO]END of List.\n");
-}
-
-void udp_monitor(int _sock_udp){
+void udp_monitor(int _sock_udp,char _username[]){
 	socklen_t from_len;
 	char r_buf[BUFSIZE];
 	int strsize;
 	fd_set mask, readfds;
+	char *s_buf,input_msg[BUFSIZE];
 
 	FD_ZERO(&mask);
+	FD_SET(0, &mask);
 	FD_SET(_sock_udp, &mask);
 	readfds = mask;
 	select( _sock_udp+1, &readfds, NULL, NULL, NULL );
+//	if( FD_ISSET(0, &readfds) ){
+//		fgets(input_msg, BUFSIZE, stdin);
+//		s_buf = format_MESG(_username,input_msg);
+//		s_buf = create_packet(MESG,s_buf);
+//		send_each(s_buf,0);//todo
+//	}
 	/*recv data*/
 	if(FD_ISSET(_sock_udp,&readfds)){
 		from_len = sizeof(from_adrs);
@@ -89,8 +46,6 @@ void tcp_monitor(int _sock_listen){
 	int *tharg;
 
 	/*connection accept*/
-	printf("[INFO]tcp success connect\n");
-
 	sock_accepted = accept(_sock_listen, NULL, NULL);
 	/* set up arg for create thread */
 	if( (tharg = (int *)malloc(sizeof(int)))==NULL ){
@@ -105,13 +60,12 @@ void tcp_monitor(int _sock_listen){
 void * echo_thread(void *arg){
 	int sock_accepted;
 	int strsize;
-	char r_buf[BUFSIZE];
+	char r_buf[BUFSIZE],*cname;
 	fd_set mask, readfds;
 
 	sock_accepted = *((int *)arg);
 
-	pthread_detach(pthread_self()); /* スレッドの分離(終了を待たない) */
-	printf("[THEARD:%p]start\n",(void *)pthread_self());
+	pthread_detach(pthread_self());
 	while(1){
 		/* set bit_mask */
 		FD_ZERO(&mask);
@@ -126,13 +80,18 @@ void * echo_thread(void *arg){
 			if( FD_ISSET(sock_accepted, &readfds) ){
 				strsize = recv_message(sock_accepted, r_buf, BUFSIZE-1, 0);
 				if(strsize == 0){
-					printf("[THEARD:%p]close\n",(void *)pthread_self());
+					//when logout without QUIT
+					if(is_rest_info(sock_accepted)){
+						cname = get_cname(sock_accepted);
+						printf("***_%s_ was logout.\n",cname);
+						delete_info(sock_accepted);
+					}
 					close(sock_accepted);
+					show_list();
 					break;
 				}
 				r_buf[strsize] = '\0';
 				msg_processor(r_buf,sock_accepted);
-				printf("[RECV:%p]%s",(void *)pthread_self(),r_buf);
 			}
 		}
 		break;
@@ -162,7 +121,6 @@ char *create_packet(int type,char *message){
 		snprintf(buf,BUFSIZE,"QUIT");
 		break;
 	}
-	printf("[Packet]%s",buf);
 	return buf;
 }
 
@@ -178,36 +136,64 @@ int analyze_packet(char *_header){
 
 void msg_processor(char *_r_buf,int _sock){
 	packet *recv_data = (packet *)_r_buf;
-	char *buf;
+	char *buf,*cname;
 	buf = malloc(BUFSIZE);
 	switch(analyze_packet(recv_data->header)){
-	case HELO:
+	case HELO://use server(connect client to server)
 		buf = create_packet(HERE,"");
 		Sendto(_sock,buf,strlen(buf),0,(struct sockaddr *)&from_adrs, sizeof(from_adrs));
-		printf("[INFO]Appear New Client.\n");
-		n_clinet++;
 		break;
-	case JOIN:
+	case JOIN://use server(add new cleint info)
 		chop_nl(recv_data->msg);
-		printf("[INFO]No:%d,Name:%s is login.\n",_sock,recv_data->msg);
+		printf("***_%s_ is login.\n",recv_data->msg);
 		insert_info(head,_sock,recv_data->msg);
-		show_list();
 		break;
-	case POST:
-		create_packet(MESG,recv_data->msg);
-		//ソケットからnameを得る
-		//msgに付与
-		//得られたname以外にsend
-		send_message(_sock,buf,strlen(buf),0);
+	case POST://use server(format recv message to "[name]msg" and send message each client)
+		cname = get_cname(_sock);
+		chop_nl(recv_data->msg);
+		buf = format_MESG(cname,recv_data->msg);
+		printf("%s.\n",buf);
+		buf = create_packet(MESG,buf);
+		send_each(buf,_sock);
 		break;
-	case MESG:
-		printf("[MESG]%s.\n",recv_data->msg);
+	case MESG://use client(show recv message)
+		chop_nl(recv_data->msg);
+		printf("%s.\n",recv_data->msg);
 		break;
-	case QUIT:
-
+	case QUIT://use server(delete client info)
+		cname = get_cname(_sock);
+		printf("***_%s_ was logout.\n",cname);
+		delete_info(_sock);
 		break;
 	}
-//	free(buf);
+	buf = NULL;
+}
+
+char * get_cname(int _sock){
+	client_info *ci = head->top->next;
+	while(ci!= NULL){
+		if(ci->sock == _sock)break;
+		ci = ci->next;
+	}
+	return ci->name;
+}
+
+char * format_MESG(char *name,char *msg){
+	static char fmsg[BUFSIZE];
+	snprintf(fmsg,BUFSIZE,"[%s]%s",name,msg);
+	return fmsg;
+}
+
+void send_each(char *_buf,int _sock){
+	client_info *ci = head->top->next;
+	while(ci!= NULL){
+		if(ci->sock != _sock){
+			if(ci->sock < 100){
+				send_message(ci->sock, _buf, strlen(_buf), MSG_NOSIGNAL);
+			}
+		}
+		ci = ci->next;
+	}
 }
 
 static char *chop_nl(char *s){
@@ -218,4 +204,3 @@ static char *chop_nl(char *s){
 	}
 	return(s);
 }
-
