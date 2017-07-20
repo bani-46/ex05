@@ -10,7 +10,6 @@
 
 #define TIMEOUT_SEC 1
 #define DEFAULT_PORT 50001
-#define USER_LENGTH 15   /* username */
 
 char branch_mode(int _port_number);
 struct sockaddr_in from_adrs;
@@ -20,8 +19,9 @@ int main(int argc, char *argv[])
 	int port_number = DEFAULT_PORT;
 	char username[USER_LENGTH];
 	char mode;
-
 	int option_num;
+	int flag = 0;
+
 	opterr = 0;
 	while(1){
 		option_num = getopt(argc, argv, "u:p:h");
@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
 		switch( option_num ){
 		case 'u' :  /* set User name */
 			snprintf(username, USER_LENGTH, "%s", optarg);
+			flag = 1;
 			break;
 		case 'p':  /* set Port number */
 			port_number = atoi(optarg);
@@ -36,10 +37,14 @@ int main(int argc, char *argv[])
 		case '?' :
 			fprintf(stderr,"Unknown option '%c'\n", optopt );
 		case 'h' :
-			fprintf(stderr,"Usage: %s -u username(within 15) -p port_number\n",argv[0]);
+			fprintf(stderr,"Usage: %s -u username(within 15) (-p port_number)\n",argv[0]);
 			exit(EXIT_FAILURE);
 			break;
 		}
+	}
+	if(flag == 0){
+		fprintf(stderr,"Usage: %s -u username(within 15) (-p port_number)\n",argv[0]);
+		exit(EXIT_FAILURE);
 	}
 
 	mode = branch_mode(port_number);
@@ -71,7 +76,7 @@ char branch_mode(int _port_number){
 	char r_buf[BUFSIZE];
 	int strsize;
 
-    /*set socket to use broadcast*/
+	/*set socket to use broadcast*/
 	set_sockaddr_in_broadcast(&broadcast_adrs,_port_number);
 	sock_broadcast = init_udpclient();
 	if(setsockopt(sock_broadcast, SOL_SOCKET, SO_BROADCAST, (void *)&broadcast_sw, sizeof(broadcast_sw)) == -1){

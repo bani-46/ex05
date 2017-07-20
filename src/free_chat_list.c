@@ -26,7 +26,6 @@ void make_list(){
 		if (ls->top == NULL) {
 			free(ls);
 		}
-		else printf("***Success set up list.\n");
 	}
 	head = ls;
 }

@@ -14,7 +14,7 @@
 #include "mynet.h"
 
 #define BUFSIZE 488
-#define NAMELENGTH 12
+#define USER_LENGTH 15
 
 /*Header*/
 enum{
@@ -24,6 +24,11 @@ enum{
 	POST,
 	MESG,
 	QUIT
+};
+/*Send Target*/
+enum{
+	ALL=1,
+	EACH
 };
 
 /*Structures*/
@@ -35,7 +40,7 @@ typedef struct{
 
 typedef struct Client_Info{
 	int  sock;
-	char name[NAMELENGTH];
+	char name[USER_LENGTH];
 	struct Client_Info *next;
 }client_info;
 
@@ -49,7 +54,7 @@ void free_chat_server(int _port_number,char username[]);
 void free_chat_client(int _port_number,char username[],
 							struct sockaddr_in *from_adrs);
 /*server func*/
-void udp_monitor(int _sock_udp_listen,char _username[]);
+void udp_monitor(int _sock_udp_listen,char _username[],int _sock_listen);
 void tcp_monitor(int _sock_listen);
 void * echo_thread(void *arg);
 
@@ -63,7 +68,7 @@ char *create_packet(int type,char *message);
 int analyze_packet(char *_header);
 void msg_processor(char *_r_buf,int _sock);
 char * get_cname(int _sock);
-void send_each(char *_buf,int _sock);
+void send_MESG(char *_buf,int _sock,int mode);
 char * format_MESG(char *name,char *msg);
 
 /*list func*/

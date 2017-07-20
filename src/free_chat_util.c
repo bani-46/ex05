@@ -13,7 +13,7 @@ struct sockaddr_in from_adrs;
 
 static char *chop_nl(char *s);
 
-void udp_monitor(int _sock_udp,char _username[]){
+void udp_monitor(int _sock_udp,char _username[],int _sock_listen){
 	socklen_t from_len;
 	char r_buf[BUFSIZE];
 	int strsize;
@@ -25,18 +25,21 @@ void udp_monitor(int _sock_udp,char _username[]){
 	FD_SET(_sock_udp, &mask);
 	readfds = mask;
 	select( _sock_udp+1, &readfds, NULL, NULL, NULL );
-//	if( FD_ISSET(0, &readfds) ){
-//		fgets(input_msg, BUFSIZE, stdin);
-//		s_buf = format_MESG(_username,input_msg);
-//		s_buf = create_packet(MESG,s_buf);
-//		send_each(s_buf,0);//todo
-//	}
+	if( FD_ISSET(0, &readfds) ){
+		fgets(input_msg, BUFSIZE, stdin);
+		chop_nl(input_msg);
+		s_buf = format_MESG(_username,input_msg);
+		s_buf = create_packet(MESG,s_buf);
+		send_MESG(s_buf,0,ALL);//todo
+	}
 	/*recv data*/
 	if(FD_ISSET(_sock_udp,&readfds)){
 		from_len = sizeof(from_adrs);
 		strsize = Recvfrom(_sock_udp, r_buf, BUFSIZE-1, 0,(struct sockaddr *)&from_adrs, &from_len);
 		msg_processor(r_buf,_sock_udp);
 		r_buf[strsize] = '\0';
+		/*tcp monitoring*/
+		tcp_monitor(_sock_listen);
 	}
 }
 
@@ -71,7 +74,7 @@ void * echo_thread(void *arg){
 		FD_ZERO(&mask);
 		FD_SET(sock_accepted, &mask);
 
-		for(;;){
+		while(1){
 			/* check recv data */
 			readfds = mask;
 			select( sock_accepted + 1, &readfds, NULL, NULL, NULL );
@@ -80,14 +83,14 @@ void * echo_thread(void *arg){
 			if( FD_ISSET(sock_accepted, &readfds) ){
 				strsize = recv_message(sock_accepted, r_buf, BUFSIZE-1, 0);
 				if(strsize == 0){
-					//when logout without QUIT
+					//when client logouted without QUIT
 					if(is_rest_info(sock_accepted)){
 						cname = get_cname(sock_accepted);
 						printf("***_%s_ was logout.\n",cname);
 						delete_info(sock_accepted);
 					}
 					close(sock_accepted);
-					show_list();
+//					show_list();
 					break;
 				}
 				r_buf[strsize] = '\0';
@@ -152,13 +155,13 @@ void msg_processor(char *_r_buf,int _sock){
 		cname = get_cname(_sock);
 		chop_nl(recv_data->msg);
 		buf = format_MESG(cname,recv_data->msg);
-		printf("%s.\n",buf);
+		printf("%s\n",buf);
 		buf = create_packet(MESG,buf);
-		send_each(buf,_sock);
+		send_MESG(buf,_sock,EACH);
 		break;
 	case MESG://use client(show recv message)
 		chop_nl(recv_data->msg);
-		printf("%s.\n",recv_data->msg);
+		printf("%s\n",recv_data->msg);
 		break;
 	case QUIT://use server(delete client info)
 		cname = get_cname(_sock);
@@ -184,15 +187,23 @@ char * format_MESG(char *name,char *msg){
 	return fmsg;
 }
 
-void send_each(char *_buf,int _sock){
+void send_MESG(char *_buf,int _sock,int mode){
 	client_info *ci = head->top->next;
-	while(ci!= NULL){
-		if(ci->sock != _sock){
-			if(ci->sock < 100){
+	switch(mode){
+	case ALL:
+		while(ci!= NULL){
+			send_message(ci->sock, _buf, strlen(_buf), MSG_NOSIGNAL);
+			ci = ci->next;
+		}
+		break;
+	case EACH:
+		while(ci!= NULL){
+			if(ci->sock != _sock){
 				send_message(ci->sock, _buf, strlen(_buf), MSG_NOSIGNAL);
 			}
+			ci = ci->next;
 		}
-		ci = ci->next;
+		break;
 	}
 }
 

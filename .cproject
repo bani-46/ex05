@@ -29,7 +29,6 @@
 								<option id="gnu.c.compiler.exe.debug.option.debugging.level.1850319650" name="Debug Level" superClass="gnu.c.compiler.exe.debug.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1068321528" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/mynet}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/mynet}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.dialect.std.2107843268" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.default" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.639992007" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
@@ -37,10 +36,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.1776985768" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug">
 								<option id="gnu.c.link.option.libs.1246441064" name="Libraries (-l)" superClass="gnu.c.link.option.libs" useByScannerDiscovery="false" valueType="libs">
 									<listOptionValue builtIn="false" value="mynet"/>
-									<listOptionValue builtIn="false" value="mynet"/>
 								</option>
 								<option id="gnu.c.link.option.paths.1941632146" name="Library search path (-L)" superClass="gnu.c.link.option.paths" useByScannerDiscovery="false" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/mynet/Debug}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/mynet/Debug}&quot;"/>
 								</option>
 								<option id="gnu.c.link.option.ldflags.1521905625" name="Linker flags" superClass="gnu.c.link.option.ldflags" useByScannerDiscovery="false" value="-pthread" valueType="string"/>

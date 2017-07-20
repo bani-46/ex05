@@ -15,7 +15,6 @@ void free_chat_server(int _port_number,char username[]){
 	printf("***Monitoring start.\n");
 	make_list();
 	while(1){
-		udp_monitor(sock_udp,username);
-		tcp_monitor(sock_listen);
+		udp_monitor(sock_udp,username,sock_listen);
 	}
 }
